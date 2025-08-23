@@ -11,7 +11,7 @@ logging.basicConfig(level=logging.INFO)
 # Replace with your actual bot token
 BOT_TOKEN = "7559529190:AAHQE5Wim83zkzgV79SY9FvP8lU_r0ftM34"
 
-# Main function
+# Main functiond
 async def main() -> None:
     # Initialize Bot and Dispatcher
     bot = Bot(BOT_TOKEN)
