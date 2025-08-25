@@ -1,14 +1,15 @@
 import asyncio
 import qrcode
 import logging
+from io import BytesIO
 from aiogram import Bot, Dispatcher, html, F
 from aiogram.filters import CommandStart, StateFilter
-from aiogram.types import Message, CallbackQuery
+from aiogram.types import Message, CallbackQuery, BufferedInputFile
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from button import get_start_keyboard, register_callback_handlers, get_main_reply_keyboard, get_consent_keyboard
-from db import init_db, get_user_info, save_user_info, get_all_user_ids, update_user_consent
+from db import init_db, get_user_info, save_user_info, get_all_user_ids, update_user_consent, get_qr_code, save_qr_code
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -131,17 +132,26 @@ async def main() -> None:
             await message.answer("Пожалуйста, сначала согласитесь на обработку персональных данных, отправив /start.")
             return
         
+        qr_data_from_db = get_qr_code(user_id)
+        if qr_data_from_db:
+            photo = BufferedInputFile(qr_data_from_db, filename=f"qr_code_{user_id}.png")
+            await message.answer_photo(photo, caption="Ваш персональный QR-код на скидку!")
+            return
+
         # Generate QR code
         qr_data = f"user_id:{user_id}_discount_code:{hash(user_id)}"
         qr_img = qrcode.make(qr_data)
         
-        # Save QR code to a temporary file
-        qr_filename = f"qr_code_{user_id}.png"
-        qr_img.save(qr_filename)
+        # Save QR code to a BytesIO object
+        buffer = BytesIO()
+        qr_img.save(buffer, format="PNG")
+        qr_bytes = buffer.getvalue()
+        
+        # Save QR code to database
+        save_qr_code(user_id, qr_bytes)
         
         # Send QR code to user
-        from aiogram.types import FSInputFile
-        photo = FSInputFile(qr_filename)
+        photo = BufferedInputFile(qr_bytes, filename=f"qr_code_{user_id}.png")
         await message.answer_photo(photo, caption="Ваш персональный QR-код на скидку!")
 
     @dp.callback_query(F.data == "agree_privacy", Form.waiting_for_consent)

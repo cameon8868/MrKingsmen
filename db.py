@@ -11,7 +11,8 @@ def init_db():
                 id INTEGER PRIMARY KEY,
                 address TEXT,
                 phone_number TEXT,
-                has_agreed_privacy INTEGER DEFAULT 0
+                has_agreed_privacy INTEGER DEFAULT 0,
+                qr_code BLOB DEFAULT NULL
             )
         """)
         conn.commit()
@@ -48,3 +49,18 @@ def get_all_user_ids() -> list[int]:
         cursor = conn.cursor()
         cursor.execute("SELECT id FROM users")
         return [row[0] for row in cursor.fetchall()]
+
+def save_qr_code(user_id: int, qr_code_data: bytes):
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("UPDATE users SET qr_code = ? WHERE id = ?", (qr_code_data, user_id))
+        conn.commit()
+
+def get_qr_code(user_id: int) -> bytes | None:
+    with sqlite3.connect(DATABASE_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT qr_code FROM users WHERE id = ?", (user_id,))
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+        return None
